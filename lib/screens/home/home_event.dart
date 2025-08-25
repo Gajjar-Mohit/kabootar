@@ -3,7 +3,7 @@ part of 'home_bloc.dart';
 @immutable
 sealed class HomeEvent {}
 
-class LoadChats extends HomeEvent {
+class LoadConversations extends HomeEvent {
   final String userId;
-  LoadChats({required this.userId});
+  LoadConversations({required this.userId});
 }

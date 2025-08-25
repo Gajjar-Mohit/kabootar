@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:kabootar/screens/chat/bloc/chat_bloc.dart';
 import 'package:kabootar/screens/home/home_bloc.dart';
 import 'package:kabootar/screens/home/UI/home.dart';
 
@@ -22,7 +23,10 @@ class MyApp extends StatelessWidget {
       ),
 
       home: MultiBlocProvider(
-        providers: [BlocProvider<HomeBloc>(create: (context) => HomeBloc())],
+        providers: [
+          BlocProvider<ChatBloc>(create: (context) => ChatBloc()),
+          BlocProvider<HomeBloc>(create: (context) => HomeBloc()),
+        ],
         child: HomePage(),
       ),
     );

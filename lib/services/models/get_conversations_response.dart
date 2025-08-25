@@ -80,14 +80,14 @@ class LastMessage {
 
   factory LastMessage.fromJson(Map<String, dynamic> json) => LastMessage(
     id: json["_id"] ?? "",
-    text: json["text"]  ?? "",
-    sender: User.fromJson(json["sender"] ??{}),
-    recipient: User.fromJson(json["recipient"]??{}),
+    text: json["text"] ?? "",
+    sender: User.fromJson(json["sender"] ?? {}),
+    recipient: User.fromJson(json["recipient"] ?? {}),
     read: json["read"] ?? false,
     delivered: json["delivered"] ?? false,
-    messageType: json["messageType"]?? "",
+    messageType: json["messageType"] ?? "",
     createdAt: DateTime.parse(json["createdAt"] ?? ""),
-    updatedAt: DateTime.parse(json["updatedAt"]?? ""),
+    updatedAt: DateTime.parse(json["updatedAt"] ?? ""),
   );
 
   Map<String, dynamic> toJson() => {

@@ -25,7 +25,6 @@ class ApiService {
         CreateUserResponse res = createUserResponseFromJson(data);
         return right(res);
       } else {
-
         return left(AuthException(message: response.reasonPhrase.toString()));
       }
     } on AuthException catch (e) {
@@ -34,20 +33,25 @@ class ApiService {
   }
 
   Future<Either<AuthException, GetUserChatMessagesResponse>> getChatMessages(
-    String userId,
+    String currentUserId,
+    String recepientId,
   ) async {
     try {
-      var response = await http.get(
-        Uri.parse("${Urls.baseUrl}/chat/$userId"),
+      var response = await http.post(
+        Uri.parse("${Urls.baseUrl}/chat/messages"),
         headers: headers,
+        body: json.encode({
+          "currentUserId": currentUserId,
+          "recipientId": recepientId,
+        }),
       );
+      // print(response.body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         GetUserChatMessagesResponse chats = getUserChatMessagesResponseFromJson(
           response.body,
         );
         return right(chats);
       } else {
-
         return left(AuthException(message: response.reasonPhrase.toString()));
       }
     } on AuthException catch (e) {
@@ -68,7 +72,6 @@ class ApiService {
             getUserConversationsResponseFromJson(response.body);
         return right(conversations);
       } else {
-
         return left(AuthException(message: response.reasonPhrase.toString()));
       }
     } on AuthException catch (e) {

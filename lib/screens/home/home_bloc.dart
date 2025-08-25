@@ -10,8 +10,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final ApiService _apiService = ApiService();
   HomeBloc() : super(HomeInitial()) {
     on<HomeEvent>((event, emit) {});
-    on<LoadChats>((event, emit) async {
-      emit(LoadingChats());
+    on<LoadConversations>((event, emit) async {
+      emit(LoadingConversations());
 
       final result = await _apiService.getConversations(event.userId);
 
@@ -24,6 +24,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           for (var element in right.data) {
             conversations.add(
               ConversationModel(
+                id: element.user.id,
                 name: element.user.name,
                 email: element.user.email,
                 imageUrl:
@@ -33,7 +34,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
               ),
             );
           }
-          emit(ChatsLoaded(conversations: conversations));
+          emit(ConversationsLoaded(conversations: conversations));
         },
       );
     });

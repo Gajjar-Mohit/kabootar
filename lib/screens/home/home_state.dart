@@ -5,9 +5,9 @@ sealed class HomeState {}
 
 final class HomeInitial extends HomeState {}
 
-class ChatsLoaded extends HomeState {
+class ConversationsLoaded extends HomeState {
   final List<ConversationModel> conversations;
-  ChatsLoaded({required this.conversations});
+  ConversationsLoaded({required this.conversations});
 }
 
 class ChatLoadingError extends HomeState {
@@ -15,4 +15,4 @@ class ChatLoadingError extends HomeState {
   ChatLoadingError({required this.message});
 }
 
-class LoadingChats extends HomeState {}
+class LoadingConversations extends HomeState {}

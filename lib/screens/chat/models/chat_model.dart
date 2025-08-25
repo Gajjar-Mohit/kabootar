@@ -13,13 +13,15 @@ class ChatModel {
 }
 
 class Chat {
-  final String messagerId;
-  final String time;
-  final String text;
-  final bool read;
-  final bool delivered;
+  String id;
+  String messagerId;
+  String time;
+  String text;
+  bool read;
+  bool delivered;
 
   Chat({
+    required this.id,
     required this.messagerId,
     required this.time,
     required this.text,
