@@ -15,7 +15,7 @@ class UserPreferences {
     if (_preferences == null) await init();
 
     final String value = uppers.isEmpty ? '' : uppers.join(',');
-    print("Setting uppers: $value");
+    // print("Setting uppers: $value");
     return await _preferences?.setString('uppers', value) ?? false;
   }
 
@@ -26,7 +26,7 @@ class UserPreferences {
   }
 
   Future<bool> setLowers(List<String> lowers) async {
-    print("Setting lowers: ${lowers.join(',')}");
+    // print("Setting lowers: ${lowers.join(',')}");
     if (_preferences == null) await init();
 
     final String value = lowers.isEmpty ? '' : lowers.join(',');

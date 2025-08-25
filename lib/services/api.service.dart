@@ -25,7 +25,7 @@ class ApiService {
         CreateUserResponse res = createUserResponseFromJson(data);
         return right(res);
       } else {
-        print(response.reasonPhrase);
+
         return left(AuthException(message: response.reasonPhrase.toString()));
       }
     } on AuthException catch (e) {
@@ -47,7 +47,7 @@ class ApiService {
         );
         return right(chats);
       } else {
-        print(response.reasonPhrase);
+
         return left(AuthException(message: response.reasonPhrase.toString()));
       }
     } on AuthException catch (e) {
@@ -68,7 +68,7 @@ class ApiService {
             getUserConversationsResponseFromJson(response.body);
         return right(conversations);
       } else {
-        print(response.reasonPhrase);
+
         return left(AuthException(message: response.reasonPhrase.toString()));
       }
     } on AuthException catch (e) {

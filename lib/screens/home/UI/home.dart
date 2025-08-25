@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kabootar/screens/chat/UI/chat_screen.dart';
 import 'package:kabootar/screens/chat/models/chat_model.dart';
 import 'package:kabootar/screens/home/home_bloc.dart';
-import 'package:kabootar/services/api.service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
