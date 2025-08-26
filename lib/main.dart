@@ -7,6 +7,7 @@ import 'package:kabootar/screens/home/UI/home.dart';
 
 void main() {
   runApp(const MyApp());
+
   WidgetsFlutterBinding.ensureInitialized();
 }
 

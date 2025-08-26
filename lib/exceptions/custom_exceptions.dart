@@ -3,7 +3,6 @@ abstract class AppException implements Exception {
   AppException({required this.message});
 }
 
-class AuthException extends AppException {
-  AuthException({required super.message});
+class CustomException extends AppException {
+  CustomException({required super.message});
 }
- 

@@ -10,12 +10,12 @@ import 'package:kabootar/services/models/user.models.dart';
 
 class ApiService {
   var headers = {'Content-Type': 'application/json'};
-  Future<Either<AuthException, CreateUserResponse>> registerUser(
+  Future<Either<CustomException, CreateUserResponse>> registerUser(
     CreateUserRequest user,
   ) async {
     try {
       var response = await http.post(
-        Uri.parse('${Urls.baseUrl}/user/create'),
+        Uri.parse('${AppUrls.baseUrl}/user/create'),
         body: createUserRequestToJson(user),
         headers: headers,
       );
@@ -25,20 +25,20 @@ class ApiService {
         CreateUserResponse res = createUserResponseFromJson(data);
         return right(res);
       } else {
-        return left(AuthException(message: response.reasonPhrase.toString()));
+        return left(CustomException(message: response.reasonPhrase.toString()));
       }
-    } on AuthException catch (e) {
-      return left(AuthException(message: e.message));
+    } on CustomException catch (e) {
+      return left(CustomException(message: e.message));
     }
   }
 
-  Future<Either<AuthException, GetUserChatMessagesResponse>> getChatMessages(
+  Future<Either<CustomException, GetUserChatMessagesResponse>> getChatMessages(
     String currentUserId,
     String recepientId,
   ) async {
     try {
       var response = await http.post(
-        Uri.parse("${Urls.baseUrl}/chat/messages"),
+        Uri.parse("${AppUrls.baseUrl}/chat/messages"),
         headers: headers,
         body: json.encode({
           "currentUserId": currentUserId,
@@ -52,19 +52,18 @@ class ApiService {
         );
         return right(chats);
       } else {
-        return left(AuthException(message: response.reasonPhrase.toString()));
+        return left(CustomException(message: response.reasonPhrase.toString()));
       }
-    } on AuthException catch (e) {
-      return left(AuthException(message: e.message));
+    } on CustomException catch (e) {
+      return left(CustomException(message: e.message));
     }
   }
 
-  Future<Either<AuthException, GetUserConversationsResponse>> getConversations(
-    String userId,
-  ) async {
+  Future<Either<CustomException, GetUserConversationsResponse>>
+  getConversations(String userId) async {
     try {
       var response = await http.get(
-        Uri.parse("${Urls.baseUrl}/chat/conversations/$userId"),
+        Uri.parse("${AppUrls.baseUrl}/chat/conversations/$userId"),
         headers: headers,
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -72,10 +71,10 @@ class ApiService {
             getUserConversationsResponseFromJson(response.body);
         return right(conversations);
       } else {
-        return left(AuthException(message: response.reasonPhrase.toString()));
+        return left(CustomException(message: response.reasonPhrase.toString()));
       }
-    } on AuthException catch (e) {
-      return left(AuthException(message: e.message));
+    } on CustomException catch (e) {
+      return left(CustomException(message: e.message));
     }
   }
 }

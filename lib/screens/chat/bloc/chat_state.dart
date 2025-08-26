@@ -5,8 +5,6 @@ sealed class ChatState {}
 
 final class ChatInitial extends ChatState {}
 
-
-
 class LoadingMessages extends ChatState {}
 
 class MessagesLoaded extends ChatState {
@@ -16,9 +14,9 @@ class MessagesLoaded extends ChatState {
 }
 
 class SendingMessage extends ChatState {
-  final List<Chat> chats;
+  // final List<Chat> chats;
 
-  SendingMessage({required this.chats});
+  SendingMessage();
 }
 
 class MessageSent extends ChatState {
@@ -32,3 +30,16 @@ class MessagesLoadingError extends ChatState {
 
   MessagesLoadingError({required this.message});
 }
+
+class SendMessageError extends ChatState {
+  final String message;
+  SendMessageError({required this.message});
+}
+
+class ListerningToMessageError extends ChatState {
+  final String message;
+
+  ListerningToMessageError({required this.message});
+}
+
+class MessageRecieved extends ChatState {}

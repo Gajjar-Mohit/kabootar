@@ -24,7 +24,8 @@ class ChatScreen extends StatelessWidget {
             currentUserId: "68ab02c71ec000db1390fac3",
             otherPersonId: recipientId,
           ),
-        ),
+        )
+        ..add(ListernToMessages()), // Initialize WebSocket listener
       child: ChatScreenContent(
         recipientId: recipientId,
         name: name,
@@ -53,6 +54,16 @@ class _ChatScreenContentState extends State<ChatScreenContent> {
   final ScrollController _scrollController = ScrollController();
   static const String _currentUserId = "68ab02c71ec000db1390fac3";
 
+  // Track if we need to scroll after build
+  bool _shouldScrollToBottom = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen to scroll controller attachment
+    _scrollController.addListener(() {});
+  }
+
   @override
   void dispose() {
     _messageController.dispose();
@@ -60,15 +71,39 @@ class _ChatScreenContentState extends State<ChatScreenContent> {
     super.dispose();
   }
 
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
+  void _scrollToBottom({bool animated = true}) {
+    // Check if scroll controller is attached and has clients
+    if (!_scrollController.hasClients) {
+      // If not attached, mark that we need to scroll later
+      _shouldScrollToBottom = true;
+      return;
+    }
+
+    if (animated) {
+      // Use post frame callback for animated scroll
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
       });
+    } else {
+      // Immediate scroll
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
+      });
+    }
+  }
+
+  void _scrollToBottomIfNeeded() {
+    if (_shouldScrollToBottom && _scrollController.hasClients) {
+      _shouldScrollToBottom = false;
+      _scrollToBottom(animated: false);
     }
   }
 
@@ -105,6 +140,22 @@ class _ChatScreenContentState extends State<ChatScreenContent> {
               ),
             );
           }
+          if (state is SendMessageError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to send message: ${state.message}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          if (state is ListerningToMessageError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Connection error: ${state.message}'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
         },
         builder: (context, state) {
           if (state is LoadingMessages) {
@@ -123,6 +174,12 @@ class _ChatScreenContentState extends State<ChatScreenContent> {
                     style: TextStyle(fontSize: 18, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 8),
+                  Text(
+                    state.message,
+                    style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
                       context.read<ChatBloc>().add(
@@ -139,7 +196,7 @@ class _ChatScreenContentState extends State<ChatScreenContent> {
             );
           }
 
-          final messages = state is MessagesLoaded ? state.chats : <Chat>[];
+          final messages = _getMessagesFromState(state);
 
           return Column(
             children: [
@@ -147,16 +204,31 @@ class _ChatScreenContentState extends State<ChatScreenContent> {
               Expanded(
                 child: messages.isEmpty
                     ? _buildEmptyState()
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        itemCount: messages.length,
-                        itemBuilder: (context, index) {
-                          return ChatTile(
-                            chat: messages[index],
-                            currentUserId: _currentUserId,
-                          );
+                    : NotificationListener<ScrollEndNotification>(
+                        onNotification: (notification) {
+                          // Check if we need to scroll after the list is built
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            _scrollToBottomIfNeeded();
+                          });
+                          return false;
                         },
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) {
+                            // Scroll to bottom after the last item is built
+                            if (index == messages.length - 1) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                _scrollToBottomIfNeeded();
+                              });
+                            }
+                            return ChatTile(
+                              chat: messages[index],
+                              currentUserId: _currentUserId,
+                            );
+                          },
+                        ),
                       ),
               ),
               // Message Input
@@ -166,6 +238,17 @@ class _ChatScreenContentState extends State<ChatScreenContent> {
         },
       ),
     );
+  }
+
+  List<Chat> _getMessagesFromState(ChatState state) {
+    if (state is MessagesLoaded) return state.chats;
+    if (state is MessageSent) return state.chats;
+    if (state is SendingMessage) {
+      // If we're sending a message, try to get chats from ChatBloc directly
+      final chatBloc = context.read<ChatBloc>();
+      return chatBloc.chats;
+    }
+    return <Chat>[];
   }
 
   PreferredSizeWidget _buildAppBar() {
@@ -197,13 +280,29 @@ class _ChatScreenContentState extends State<ChatScreenContent> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const Text(
-                  "Online",
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                  ),
+                BlocBuilder<ChatBloc, ChatState>(
+                  builder: (context, state) {
+                    String status = "Offline";
+                    Color statusColor = Colors.grey;
+
+                    // if (state is ListeningToMessages) {
+                    //   status = "Online";
+                    //   statusColor = Colors.green;
+                    // }
+                    if (state is ListerningToMessageError) {
+                      status = "Connection lost";
+                      statusColor = Colors.red;
+                    }
+
+                    return Text(
+                      status,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -223,11 +322,45 @@ class _ChatScreenContentState extends State<ChatScreenContent> {
             // Handle voice call
           },
         ),
-        IconButton(
+        PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: Colors.black),
-          onPressed: () {
-            // Handle more options
+          onSelected: (value) {
+            switch (value) {
+              case 'reconnect':
+                context.read<ChatBloc>().add(ListernToMessages());
+                break;
+              case 'refresh':
+                context.read<ChatBloc>().add(
+                  LoadMessages(
+                    currentUserId: _currentUserId,
+                    otherPersonId: widget.recipientId,
+                  ),
+                );
+                break;
+            }
           },
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'reconnect',
+              child: Row(
+                children: [
+                  Icon(Icons.refresh),
+                  SizedBox(width: 8),
+                  Text('Reconnect'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'refresh',
+              child: Row(
+                children: [
+                  Icon(Icons.sync),
+                  SizedBox(width: 8),
+                  Text('Refresh Messages'),
+                ],
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -308,7 +441,6 @@ class _ChatScreenContentState extends State<ChatScreenContent> {
                     IconButton(
                       icon: Icon(Icons.emoji_emotions, color: Colors.grey[600]),
                       onPressed: () {
-                        // Handle emoji picker
                         _showEmojiPicker();
                       },
                     ),
@@ -413,7 +545,6 @@ class _ChatScreenContentState extends State<ChatScreenContent> {
   }
 
   void _showEmojiPicker() {
-    // Implement emoji picker functionality
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Emoji picker not implemented yet'),

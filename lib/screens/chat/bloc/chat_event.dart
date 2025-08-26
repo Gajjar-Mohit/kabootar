@@ -40,3 +40,7 @@ class MessageStatusUpdated extends ChatEvent {
     required this.read,
   });
 }
+
+class ListernToMessages extends ChatEvent{
+  
+}

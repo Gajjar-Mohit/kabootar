@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:kabootar/screens/chat/UI/chat_screen.dart';
+import 'package:kabootar/screens/chat/bloc/chat_bloc.dart';
 
 import 'package:kabootar/screens/home/home_bloc.dart';
 
@@ -13,10 +14,13 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late HomeBloc _homeBloc;
+  late ChatBloc _chatBloc;
   @override
   void initState() {
     _homeBloc = BlocProvider.of<HomeBloc>(context);
+    _chatBloc = BlocProvider.of<ChatBloc>(context);
     _homeBloc.add(LoadConversations(userId: "68ab02c71ec000db1390fac3"));
+    _chatBloc.add(ListernToMessages());
     super.initState();
   }
 
