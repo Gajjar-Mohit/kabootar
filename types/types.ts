@@ -28,7 +28,8 @@ interface Message {
 
 export interface ChatMessage {
   id: string;
-  messagerId: string;
+  sender: string;
+  recipient: string;
   text: string;
   read: boolean;
   time: string;

@@ -94,13 +94,16 @@ export default function MessagingApp() {
         wsClient.current?.onMessage((data: string) => {
           try {
             const messageData = JSON.parse(data);
+            console.log("Message recieved: " + messageData.data);
             if (messageData.data) {
-              const newMessage: any = {
+              const newMessage = {
                 id: messageData.data.id,
-                text: messageData.data.text,
                 sender: messageData.data.sender,
                 recipient: messageData.data.recipient,
-                messageType: messageData.data.messageType,
+                text: messageData.data.text,
+                read: messageData.data.read,
+                time: messageData.data.time,
+                delivered: messageData.delivered,
               };
 
               setMessages((prev) => {
@@ -168,7 +171,7 @@ export default function MessagingApp() {
 
       setMessages((prev) => [
         ...prev,
-        { ...messagePayload, id: `temp-${Date.now()}` },
+        { ...messagePayload, id: `temp-${Date.now()}`, time: new Date().toISOString() },
       ]);
       setMessageText("");
 
@@ -314,21 +317,17 @@ export default function MessagingApp() {
           recipientId,
         }
       );
-
       if (response.data?.success) {
         const transformedMessages: ChatMessage[] = (
           response.data.data || []
-        ).map((msg: any) => ({
-          id: msg._id,
-          text: msg.text,
-          sender: typeof msg.sender === "object" ? msg.sender._id : msg.sender,
-          recipient:
-            typeof msg.recipient === "object"
-              ? msg.recipient._id
-              : msg.recipient,
-          messageType: msg.messageType || "text",
-          createdAt: msg.createdAt,
-          updatedAt: msg.updatedAt,
+        ).map((messageData: ChatMessage) => ({
+          id: messageData.id,
+          sender: messageData.sender,
+          recipient: messageData.recipient,
+          text: messageData.text,
+          read: messageData.read,
+          time: messageData.time,
+          delivered: messageData.delivered,
         }));
         setMessages(transformedMessages);
       } else {
