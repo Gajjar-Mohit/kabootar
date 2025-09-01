@@ -1,5 +1,4 @@
 import { ChatMessage } from "@/types/types";
-import { Avatar, AvatarFallback } from "@radix-ui/react-avatar";
 
 export const ChatMessageTile = (
   message: ChatMessage,
@@ -13,13 +12,9 @@ export const ChatMessageTile = (
     return date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false,
+      hour12: true,
+      weekday: "short",
     });
-  };
-
-  // Get user initials for avatar (using messagerId as fallback)
-  const getUserInitials = (userId: string) => {
-    return userId.slice(0, 2).toUpperCase();
   };
 
   if (isCurrentUser) {
@@ -43,7 +38,6 @@ export const ChatMessageTile = (
   return (
     <div key={message.id} className="flex justify-start mb-4">
       <div className="flex gap-2 max-w-xs lg:max-w-md">
-       
         <div className="min-w-0 flex-1">
           <div className="bg-white rounded-2xl rounded-bl-md px-4 py-2 shadow-sm border">
             <p className="text-sm text-gray-900 break-words">{message.text}</p>

@@ -1,5 +1,5 @@
 "use client";
-
+import Image from "next/image";
 import {
   MagnifyingGlassIcon,
   PaperAirplaneIcon,
@@ -7,15 +7,32 @@ import {
   ArrowLeftIcon,
   Bars3Icon,
 } from "@heroicons/react/24/outline";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProfilePanel } from "@/components/profile-panel";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { ChatMessage, Conversation } from "@/types/types";
-import Image from "next/image";
+
+import { WebSocketClient } from "@/lib/websocket";
 import { ChatMessageTile } from "@/components/chat-message-component";
+import { ChatMessage } from "@/types/types";
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  profileUrl: string;
+  bio: string;
+}
+
+export interface Conversation {
+  userId: string;
+  user: User;
+  lastMessage: {
+    text: string;
+    createdAt: string;
+  };
+}
 
 type MobileView = "conversations" | "chat" | "profile";
 
@@ -29,7 +46,179 @@ export default function MessagingApp() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [currentUserId] = useState("68ab02c71ec000db1390fac3"); // Make this configurable
+  const [currentUserId] = useState("68ab028330d714be38f3942f");
+  const [isConnected, setIsConnected] = useState(false);
+  const [messageText, setMessageText] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const wsClient = useRef<WebSocketClient | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    // Initialize WebSocket connection
+    wsClient.current = new WebSocketClient(
+      `ws://localhost:8001/${currentUserId}`
+    );
+
+    const connect = async () => {
+      try {
+        await wsClient.current?.connect();
+        setIsConnected(true);
+
+        // Listen for incoming messages
+        wsClient.current?.onMessage((data: string) => {
+          console.log("Message received:", data);
+
+          try {
+            const messageData = JSON.parse(data);
+
+            if (messageData.data) {
+              const newMessage: any = {
+                id: messageData.data.id,
+                text: messageData.data.text,
+                sender: messageData.data.sender,
+                recipient: messageData.data.recipient,
+                messageType: messageData.data.messageType as "text",
+              };
+
+              // Add message to current conversation if it matches
+              setMessages((prev) => {
+                // Avoid duplicate messages
+                if (prev.some((msg) => msg.id === newMessage._id)) {
+                  return prev;
+                }
+                return [...prev, newMessage];
+              });
+
+              // Update conversations list with latest message
+              setConversations((prev) =>
+                prev.map((conv) => {
+                  if (
+                    conv.userId === messageData.data.sender ||
+                    conv.userId === messageData.data.recipient
+                  ) {
+                    return {
+                      ...conv,
+                      lastMessage: {
+                        text: messageData.data.text,
+                        createdAt: messageData.timestamp,
+                      },
+                    };
+                  }
+                  return conv;
+                })
+              );
+            }
+          } catch (error) {
+            console.error("Error parsing incoming message:", error);
+          }
+        });
+
+        wsClient.current?.onConnect(() => {
+          console.log("WebSocket connected");
+          setIsConnected(true);
+        });
+
+        wsClient.current?.onDisconnect(() => {
+          console.log("WebSocket disconnected");
+          setIsConnected(false);
+        });
+
+        wsClient.current?.onError((error: any) => {
+          console.error("WebSocket error:", error);
+          setIsConnected(false);
+        });
+      } catch (error) {
+        console.error("Failed to connect:", error);
+        setIsConnected(false);
+      }
+    };
+
+    connect();
+
+    // Cleanup on unmount
+    return () => {
+      if (wsClient.current && "disconnect" in wsClient.current) {
+        (wsClient.current as any).disconnect();
+      }
+    };
+  }, [currentUserId]);
+
+  const handleSendMessage = async () => {
+    if (
+      !messageText.trim() ||
+      !selectedConversation ||
+      isSending ||
+      !isConnected
+    ) {
+      return;
+    }
+
+    setIsSending(true);
+
+    try {
+      const messagePayload = {
+        sender: currentUserId,
+        text: messageText.trim(),
+        recipient: selectedConversation.userId,
+        messageType: "text" as const,
+      };
+
+      // Create temporary message for immediate UI update
+      const tempMessage: any = {
+        text: messageText.trim(),
+        sender: currentUserId,
+        recipient: selectedConversation.userId,
+        messageType: "text" as const,
+      };
+
+      // Add message to UI immediately
+      setMessages((prev) => [...prev, tempMessage]);
+
+      // Clear input
+      setMessageText("");
+
+      // Send via WebSocket
+      wsClient.current?.send(JSON.stringify(messagePayload));
+
+      // Update conversations list
+      setConversations((prev) =>
+        prev.map((conv) => {
+          if (conv.userId === selectedConversation.userId) {
+            return {
+              ...conv,
+              lastMessage: {
+                text: messageText.trim(),
+                createdAt: new Date().toISOString(),
+              },
+            };
+          }
+          return conv;
+        })
+      );
+    } catch (error) {
+      console.error("Error sending message:", error);
+      // Remove the temporary message on error
+      setMessages((prev) => prev.filter((msg) => !msg.id.startsWith("temp-")));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
 
   useEffect(() => {
     const checkMobile = () => {
@@ -77,7 +266,22 @@ export default function MessagingApp() {
 
       if (response.data?.success) {
         console.log("Messages:", response.data.data);
-        setMessages(response.data.data || []);
+        // Transform the response data to match our ChatMessage interface
+        const transformedMessages: ChatMessage[] = (
+          response.data.data || []
+        ).map((msg: any) => ({
+          _id: msg._id,
+          text: msg.text,
+          sender: typeof msg.sender === "object" ? msg.sender._id : msg.sender,
+          recipient:
+            typeof msg.recipient === "object"
+              ? msg.recipient._id
+              : msg.recipient,
+          messageType: msg.messageType || "text",
+          createdAt: msg.createdAt,
+          updatedAt: msg.updatedAt,
+        }));
+        setMessages(transformedMessages);
       } else {
         console.error("Failed to fetch messages:", response.data);
         setMessages([]);
@@ -92,6 +296,8 @@ export default function MessagingApp() {
 
   const handleConversationSelect = (conversation: Conversation) => {
     setSelectedConversation(conversation);
+    // Clear message input when switching conversations
+    setMessageText("");
     // Fetch messages for this conversation
     getConversationMessages(conversation.user._id);
 
@@ -104,6 +310,7 @@ export default function MessagingApp() {
     setMobileView("conversations");
     setSelectedConversation(null);
     setMessages([]);
+    setMessageText("");
   };
 
   const handleShowProfile = () => {
@@ -125,6 +332,8 @@ export default function MessagingApp() {
       return date.toLocaleTimeString([], {
         hour: "2-digit",
         minute: "2-digit",
+        hour12: true,
+        weekday: "short",
       });
     } catch {
       return "Invalid time";
@@ -164,6 +373,22 @@ export default function MessagingApp() {
                   className="pl-10 bg-gray-50 border-0 focus-visible:ring-1 focus-visible:ring-purple-500"
                 />
               </div>
+            </div>
+
+            {/* Connection Status */}
+            <div className="px-4 py-2 text-xs">
+              <span
+                className={`inline-flex items-center gap-1 ${
+                  isConnected ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    isConnected ? "bg-green-500" : "bg-red-500"
+                  }`}
+                ></div>
+                {isConnected ? "Connected" : "Disconnected"}
+              </span>
             </div>
 
             {/* Conversations List */}
@@ -292,6 +517,7 @@ export default function MessagingApp() {
                       {messages.map((message) =>
                         ChatMessageTile(message, currentUserId)
                       )}
+                      <div ref={messagesEndRef} />
                     </>
                   )}
                 </div>
@@ -301,15 +527,27 @@ export default function MessagingApp() {
                   <div className="flex items-center gap-3">
                     <div className="flex-1 relative">
                       <Input
+                        value={messageText}
+                        onChange={(e) => setMessageText(e.target.value)}
+                        onKeyPress={handleKeyPress}
                         placeholder="Type a message"
+                        disabled={!isConnected || isSending}
                         className="pr-12 rounded-full border-gray-200 focus-visible:ring-purple-500 focus-visible:border-purple-500"
                       />
                     </div>
                     <Button
+                      onClick={handleSendMessage}
+                      disabled={
+                        !messageText.trim() || !isConnected || isSending
+                      }
                       size="icon"
-                      className="h-10 w-10 rounded-full bg-purple-500 hover:bg-purple-600 shadow-md"
+                      className="h-10 w-10 rounded-full bg-purple-500 hover:bg-purple-600 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <PaperAirplaneIcon className="h-4 w-4" />
+                      {isSending ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      ) : (
+                        <PaperAirplaneIcon className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -324,7 +562,12 @@ export default function MessagingApp() {
           {/* Desktop Profile Panel */}
           {showProfile && (
             <div className="w-80 border-l border-gray-200 bg-white">
-              <ProfilePanel />
+              <ProfilePanel
+                email={selectedConversation?.user.email ?? ""}
+                profileImage={selectedConversation?.user.profileUrl ?? ""}
+                fullName={selectedConversation?.user.name ?? ""}
+                bio={selectedConversation?.user.bio ?? ""}
+              />
             </div>
           )}
         </div>
@@ -340,9 +583,23 @@ export default function MessagingApp() {
                   <h1 className="text-xl font-semibold text-gray-900">
                     Messages
                   </h1>
-                  <Button variant="ghost" size="icon">
-                    <Bars3Icon className="h-5 w-5" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-flex items-center gap-1 text-xs ${
+                        isConnected ? "text-green-600" : "text-red-600"
+                      }`}
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          isConnected ? "bg-green-500" : "bg-red-500"
+                        }`}
+                      ></div>
+                      {isConnected ? "Online" : "Offline"}
+                    </span>
+                    <Button variant="ghost" size="icon">
+                      <Bars3Icon className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
                 <div className="relative">
                   <MagnifyingGlassIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -478,6 +735,7 @@ export default function MessagingApp() {
                     {messages.map((message) =>
                       ChatMessageTile(message, currentUserId)
                     )}
+                    <div ref={messagesEndRef} />
                   </>
                 )}
               </div>
@@ -487,15 +745,25 @@ export default function MessagingApp() {
                 <div className="flex items-center gap-3">
                   <div className="flex-1 relative">
                     <Input
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyPress={handleKeyPress}
                       placeholder="Type a message"
+                      disabled={!isConnected || isSending}
                       className="rounded-full border-gray-200 focus-visible:ring-purple-500 focus-visible:border-purple-500 text-sm"
                     />
                   </div>
                   <Button
                     size="icon"
-                    className="h-10 w-10 rounded-full bg-purple-500 hover:bg-purple-600 shadow-md flex-shrink-0"
+                    onClick={handleSendMessage}
+                    disabled={!messageText.trim() || !isConnected || isSending}
+                    className="h-10 w-10 rounded-full bg-purple-500 hover:bg-purple-600 shadow-md flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <PaperAirplaneIcon className="h-4 w-4" />
+                    {isSending ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    ) : (
+                      <PaperAirplaneIcon className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -517,7 +785,12 @@ export default function MessagingApp() {
                 <h2 className="font-semibold text-gray-900">Profile</h2>
               </div>
               <div className="flex-1 overflow-y-auto">
-                <ProfilePanel />
+                <ProfilePanel
+                  profileImage={selectedConversation?.user.profileUrl ?? ""}
+                  email={selectedConversation?.user.email ?? ""}
+                  fullName={selectedConversation?.user.name ?? ""}
+                  bio={selectedConversation?.user.bio ?? ""}
+                />
               </div>
             </div>
           )}
