@@ -151,21 +151,14 @@ export default function Navbar() {
 
               <DropdownMenuItem
                 onClick={handleProfileClick}
-                className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 focus:bg-gray-50"
+                className="px-3 py-2 text-sm cursor-pointer"
               >
                 Profile
               </DropdownMenuItem>
 
               <DropdownMenuItem
-                onClick={handleSettingsClick}
-                className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 focus:bg-gray-50"
-              >
-                Settings
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
                 onClick={handleHelpClick}
-                className="px-3 py-2 text-sm cursor-pointer hover:bg-gray-50 focus:bg-gray-50"
+                className="px-3 py-2 text-sm cursor-pointer"
               >
                 Help & Support
               </DropdownMenuItem>
@@ -174,7 +167,7 @@ export default function Navbar() {
 
               <DropdownMenuItem
                 onClick={handleSignOut}
-                className="px-3 py-2 text-sm cursor-pointer hover:bg-red-50 focus:bg-red-50 text-red-600"
+                className="px-3 py-2 text-sm cursor-pointer "
               >
                 Sign out
               </DropdownMenuItem>
