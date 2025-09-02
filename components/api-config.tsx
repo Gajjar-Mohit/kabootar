@@ -1,13 +1,13 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { useApiConfig } from "@/hooks/use-api-config"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useApiConfig } from "@/lib/healthCheck";
 
 export function ApiConfigPanel() {
-  const { config, save, reset } = useApiConfig()
+  const { config, save, reset } = useApiConfig();
 
   return (
     <Card className="border rounded-lg">
@@ -31,17 +31,32 @@ export function ApiConfigPanel() {
             <Input
               aria-label="Create User Path"
               value={config.routes.usersCreate}
-              onChange={(e) => save({ ...config, routes: { ...config.routes, usersCreate: e.target.value } })}
+              onChange={(e) =>
+                save({
+                  ...config,
+                  routes: { ...config.routes, usersCreate: e.target.value },
+                })
+              }
             />
             <Input
               aria-label="Get User By ID Path"
               value={config.routes.usersGetById}
-              onChange={(e) => save({ ...config, routes: { ...config.routes, usersGetById: e.target.value } })}
+              onChange={(e) =>
+                save({
+                  ...config,
+                  routes: { ...config.routes, usersGetById: e.target.value },
+                })
+              }
             />
             <Input
               aria-label="Delete User Path"
               value={config.routes.usersDelete}
-              onChange={(e) => save({ ...config, routes: { ...config.routes, usersDelete: e.target.value } })}
+              onChange={(e) =>
+                save({
+                  ...config,
+                  routes: { ...config.routes, usersDelete: e.target.value },
+                })
+              }
             />
           </div>
         </div>
@@ -52,17 +67,35 @@ export function ApiConfigPanel() {
             <Input
               aria-label="Send/Store Message Path"
               value={config.routes.messagesCreate}
-              onChange={(e) => save({ ...config, routes: { ...config.routes, messagesCreate: e.target.value } })}
+              onChange={(e) =>
+                save({
+                  ...config,
+                  routes: { ...config.routes, messagesCreate: e.target.value },
+                })
+              }
             />
             <Input
               aria-label="Messages Between Users Path"
               value={config.routes.messagesBetween}
-              onChange={(e) => save({ ...config, routes: { ...config.routes, messagesBetween: e.target.value } })}
+              onChange={(e) =>
+                save({
+                  ...config,
+                  routes: { ...config.routes, messagesBetween: e.target.value },
+                })
+              }
             />
             <Input
               aria-label="Conversations By User Path"
               value={config.routes.conversationsByUser}
-              onChange={(e) => save({ ...config, routes: { ...config.routes, conversationsByUser: e.target.value } })}
+              onChange={(e) =>
+                save({
+                  ...config,
+                  routes: {
+                    ...config.routes,
+                    conversationsByUser: e.target.value,
+                  },
+                })
+              }
             />
           </div>
         </div>
@@ -77,5 +110,5 @@ export function ApiConfigPanel() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
