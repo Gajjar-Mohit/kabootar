@@ -20,6 +20,7 @@ import { ChatMessageTile } from "@/components/chat-message-component";
 import { WebSocketClient } from "@/lib/websocket";
 import { useAuth, useUser } from "@clerk/nextjs";
 import type { ChatMessage, Conversation, User } from "@/types/types";
+import { BASE_URL, WS_URL } from "@/lib/urls";
 
 // Define mobile view types
 type MobileView = "conversations" | "chat" | "profile" | "search";
@@ -60,9 +61,7 @@ export default function MessagingApp() {
     const getUserId = async () => {
       if (!user?.id) return;
       try {
-        const response = await axios.get(
-          `http://192.168.1.5:8000/api/v1/user/${user.id}`
-        );
+        const response = await axios.get(`${BASE_URL}/user/${user.id}`);
         if (response.data?.success) {
           setCurrentUserId(response.data.data._id);
         }
@@ -82,9 +81,7 @@ export default function MessagingApp() {
   useEffect(() => {
     if (!currentUserId) return;
 
-    wsClient.current = new WebSocketClient(
-      `ws://192.168.1.5:8001/${currentUserId}`
-    );
+    wsClient.current = new WebSocketClient(`${WS_URL}/${currentUserId}`);
 
     const connect = async () => {
       try {
@@ -94,7 +91,6 @@ export default function MessagingApp() {
         wsClient.current?.onMessage((data: string) => {
           try {
             const messageData = JSON.parse(data);
-            console.log("Message recieved: " + messageData.data);
             if (messageData.data) {
               const newMessage = {
                 id: messageData.data.id,
@@ -119,7 +115,7 @@ export default function MessagingApp() {
                         ...conv,
                         lastMessage: {
                           text: messageData.data.text,
-                          createdAt: messageData.timestamp,
+                          createdAt: messageData.data.time,
                         },
                       }
                     : conv
@@ -171,7 +167,11 @@ export default function MessagingApp() {
 
       setMessages((prev) => [
         ...prev,
-        { ...messagePayload, id: `temp-${Date.now()}`, time: new Date().toISOString() },
+        {
+          ...messagePayload,
+          id: `temp-${Date.now()}`,
+          time: new Date().toISOString(),
+        },
       ]);
       setMessageText("");
 
@@ -217,14 +217,12 @@ export default function MessagingApp() {
     setSearchError("");
     try {
       const response = await axios.post(
-        `http://192.168.1.5:8000/api/v1/user/search?q=${query}&exclude=${currentUserId}`
+        `${BASE_URL}/user/search?q=${query}&exclude=${currentUserId}`
       );
-      console.log(response.data);
       setSearchResults(response.data?.success ? response.data.data : []);
       setSearchError(response.data?.success ? "" : "Failed to search users");
     } catch (error) {
-      console.error("Error searching users:", error);
-      setSearchError("Error occurred while searching");
+      setSearchError("No users found");
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -263,9 +261,7 @@ export default function MessagingApp() {
       setSearchQuery("");
       setSearchResults([]);
       if (isMobile) setMobileView("chat");
-    } catch (error) {
-      console.error("Error creating conversation:", error);
-    }
+    } catch (error) {}
   };
 
   // Debounced search
@@ -292,13 +288,12 @@ export default function MessagingApp() {
       setLoading(true);
       try {
         const response = await axios.get(
-          `http://192.168.1.5:8000/api/v1/chat/conversations/${currentUserId}`
+          `${BASE_URL}/chat/conversations/${currentUserId}`
         );
         if (response.data?.success) {
           setConversations(response.data.data);
         }
       } catch (error) {
-        console.error("Error fetching conversations:", error);
       } finally {
         setLoading(false);
       }
@@ -310,13 +305,10 @@ export default function MessagingApp() {
   const getConversationMessages = async (recipientId: string) => {
     setMessagesLoading(true);
     try {
-      const response = await axios.post(
-        "http://192.168.1.5:8000/api/v1/chat/messages",
-        {
-          currentUserId,
-          recipientId,
-        }
-      );
+      const response = await axios.post(`${BASE_URL}/chat/messages`, {
+        currentUserId,
+        recipientId,
+      });
       if (response.data?.success) {
         const transformedMessages: ChatMessage[] = (
           response.data.data || []
@@ -454,7 +446,7 @@ export default function MessagingApp() {
                             <Image
                               width={40}
                               height={40}
-                              src={user.profileUrl}
+                              src={user.profileUrl ?? ""}
                               alt={user.name}
                             />
                           ) : (
@@ -512,7 +504,7 @@ export default function MessagingApp() {
                           isConnected ? "bg-green-500" : "bg-red-500"
                         }`}
                       ></div>
-                      {isConnected ? "Online" : "Offline"}
+                      Server {isConnected ? "Online" : "Offline"}
                     </span>
                     <Button
                       variant="ghost"
@@ -574,7 +566,6 @@ export default function MessagingApp() {
                             </AvatarFallback>
                           )}
                         </Avatar>
-                        <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500"></div>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between">
@@ -582,7 +573,7 @@ export default function MessagingApp() {
                             {conversation.user.name}
                           </h3>
                           <span className="ml-2 flex-shrink-0 text-xs text-gray-500">
-                            {formatTime(conversation.lastMessage.createdAt)}
+                            {formatTime(conversation.lastMessage.time)}
                           </span>
                         </div>
                         <p className="mt-0.5 truncate text-sm text-gray-500">
@@ -713,7 +704,9 @@ export default function MessagingApp() {
                   <h3 className="truncate text-sm font-semibold text-gray-900">
                     {selectedConversation.user.name}
                   </h3>
-                  <p className="text-xs text-gray-500">Last seen 10 min ago</p>
+                  <p className="text-xs text-gray-500">
+                    {selectedConversation.user.email}
+                  </p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={handleShowProfile}>
                   <UserIcon className="h-5 w-5" />
@@ -838,7 +831,7 @@ export default function MessagingApp() {
                     isConnected ? "bg-green-500" : "bg-red-500"
                   }`}
                 ></div>
-                {isConnected ? "Connected" : "Disconnected"}
+                {isConnected ? "Server Connected" : "Server Disconnected"}
               </span>
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -885,7 +878,6 @@ export default function MessagingApp() {
                           </AvatarFallback>
                         )}
                       </Avatar>
-                      <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500"></div>
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
@@ -934,7 +926,7 @@ export default function MessagingApp() {
                         {selectedConversation.user.name}
                       </h3>
                       <p className="text-sm text-gray-500">
-                        Last seen 10 min ago
+                        {selectedConversation.user.email}
                       </p>
                     </div>
                   </div>
