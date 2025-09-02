@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { apiRequest } from "@/lib/urls";
-import { useApiConfig } from "@/lib/healthCheck";
+import { useApiConfig } from "@/app/api/healthCheck";
 
 function JsonView({ data }: { data: any }) {
   if (data == null) return null;

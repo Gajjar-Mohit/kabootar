@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useApiConfig } from "@/lib/healthCheck";
+import { useApiConfig } from "@/app/api/healthCheck";
 
 export function ApiConfigPanel() {
   const { config, save, reset } = useApiConfig();
